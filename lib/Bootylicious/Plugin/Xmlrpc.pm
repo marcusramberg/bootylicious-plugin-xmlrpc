@@ -10,6 +10,7 @@ use Protocol::XMLRPC::MethodResponse;
 
 our $VERSION = '0.990101';
 
+__PACKAGE__->attr([qw/username password/]);
 __PACKAGE__->attr('ctx');
 
 sub new {
@@ -28,6 +29,9 @@ sub register {
     if (!defined $args->{username} || !defined $args->{password}) {
         die 'Username and password are required';
     }
+
+    $self->username($args->{username});
+    $self->password($args->{password});
 
     my $dispatcher = $self->_dispatcher($app);
 
