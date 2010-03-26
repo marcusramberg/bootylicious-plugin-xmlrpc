@@ -124,12 +124,14 @@ sub _dispatcher {
                     $self->_check_access($username, $password);
 
                     my ($articles) = main::get_articles(limit => $limit->value);
-
                     return [
                         map {
-                            {   title       => $_->{title},
-                                description => $_->{content},
-                                content     => $_->{content},
+                            {   postid      => $_->{year}.'/'.$_->{month}.'/'.$_->{name},
+                                dateCreated => $_->{timestamp},
+                                title       => $_->{title},
+                                link        => $_->{link},
+                                description => $_->{raw_content},
+                                content     => $_->{raw_content},
                                 categories  => $_->{tags}
                             }
                           } @$articles
@@ -165,7 +167,7 @@ sub _dispatcher {
 
                     my $articlesdir = $config->{articlesdir};
                     my $path = "$articlesdir/$timestamp-$alias.$format";
-
+                    
                     $self->_write_article($path, $struct);
 
                     return $year . '/' . $month . '/' . $alias;
@@ -179,13 +181,18 @@ sub _dispatcher {
 
                     $self->_check_access($username, $password);
 
-                    my $article = main::get_article($articleid->value);
+    
+                    my ($article,$pager) = main::get_article($articleid->value);
                     die 'Article not found' unless $article;
 
                     return {
-                        title       => $article->{title},
-                        description => $article->{content},
-                        categories => $article->{tags}
+                            postid      => $article->{year}.'/'.$article->{month}.'/'.$article->{name},
+                            dateCreated => $_->{timestamp},
+                            title       => $article->{title},
+                            description => $article->{raw_content},
+                            content     => $article->{raw_content},
+                            link        => $article->{link},
+                            categories  => $article->{tags}
                       }
                 }
             },
@@ -197,7 +204,7 @@ sub _dispatcher {
 
                     $self->_check_access($username, $password);
 
-                    my $article = main::get_article($articleid->value);
+                    my ($article,$pager) = main::get_article($articleid->value);
                     die 'Article not found' unless $article;
 
                     my $path = $article->{path};
@@ -230,6 +237,9 @@ sub _write_article {
     if (my $title = $struct->value->{title}) {
         $metadata .= 'Title: ' . $title . "\n";
     }
+    if (my $link = $struct->value->{link}) {
+        $metadata .= 'Link: ' . $link . "\n";
+    }
 
     if (my @categories = @{$struct->value->{categories} || []}) {
         $metadata .= 'Tags: ';
@@ -238,7 +248,9 @@ sub _write_article {
         $metadata .= "\n";
     }
     $metadata .= "\n" if $metadata;
-
+    utf8::encode($metadata); 
+ #   utf8::encode $struct->value->{description};
+ #   utf8::encode $struct->value->{content};
     open FILE, "> $path" or return 0;
     print FILE $metadata;
     print FILE $struct->value->{description}
